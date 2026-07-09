@@ -49,7 +49,6 @@ pip install -r requirements.txt
 | `phase0_tools/` | dataset preparation: taxonomy build, pseudo-specimen clustering, specimen-aware splits |
 | `configs/config.yaml` | single source of truth for all parameters |
 | `configs/prompts.yaml` | text prompts for the synthesis pipeline |
-| `NOTEBOOK_MAP.md` | registry of the driving notebook cells (pipeline order and outputs) |
 
 All parameters are read from `configs/config.yaml`; nothing is hard-coded.
 
@@ -68,8 +67,8 @@ All parameters are read from `configs/config.yaml`; nothing is hard-coded.
    FPR@95, and the percentage of ID images flagged as OOD across the corruption
    suite, on both splits, over three seeds.
 
-The end-to-end run is orchestrated by a Google Colab notebook whose cells
-(`F00`–`F32`) are indexed in `NOTEBOOK_MAP.md`.
+The pipeline was developed and run on Google Colab (L4 24 GB), calling the
+modules in `src/` in the order above.
 
 ## Notes on the method
 
