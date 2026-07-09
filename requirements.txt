@@ -1,0 +1,35 @@
+# WoodOOD-FRIO requirements
+# Developed on Google Colab (L4 24GB). torch/torchvision are assumed preinstalled
+# and matched to your CUDA build -- do NOT reinstall them here to avoid breaking CUDA.
+#   (expected) torch>=2.1, torchvision
+
+# Diffusion + LoRA (outlier-synthesis pipeline; negative result)
+diffusers>=0.27
+transformers>=4.38
+accelerate>=0.27
+peft>=0.10
+safetensors
+bitsandbytes
+
+# CLIP text embeddings (taxonomy-aligned encoder)
+open_clip_torch
+
+# NPOS-style outlier sampling
+faiss-gpu          # if installation fails, use: faiss-cpu
+scikit-learn
+
+# Generated-image quality (FID / diversity)
+lpips
+clean-fid
+
+# OOD baselines (install from source; not on PyPI):
+#   pip install git+https://github.com/Jingkang50/OpenOOD.git
+
+# Utilities
+numpy
+scipy
+pillow
+pandas
+matplotlib
+tqdm
+pyyaml

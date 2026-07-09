@@ -1,0 +1,120 @@
+# config.yaml — nguồn chân lý cho MỌI tham số. Cell chỉ đọc từ đây, không gõ cứng.
+# Đã chỉnh cho 1x L4 24GB / ~60GB RAM. Nếu OOM: giảm batch / tăng grad_accum / bật gradient_checkpointing,
+# rồi GHI thay đổi vào đây + NOTEBOOK_MAP (không sửa lén trong cell).
+
+project:
+  name: wood_ood
+  seeds: [0, 1, 2]            # >=3 seed cho mean±std
+  force: false               # true = tính lại kể cả khi output đã có
+
+paths:
+  root: /content/drive/MyDrive/wood_ood
+  data: data/Wood_ID_1-50
+  taxonomy: taxonomy.csv
+  splits: splits
+  prompts: configs/prompts.yaml
+  src: src
+  checkpoints: checkpoints
+  synth: synth
+  results: results
+  figures: figures
+  tables: tables
+  logs: logs
+
+hardware:
+  device: cuda
+  amp_dtype: bf16            # L4 = Ada; fallback fp16
+  num_workers: 8
+
+data:
+  image_size: 224
+  scenarios: ["40_10", "30_20"]
+  # ngưỡng OOD tính trên val_id; OOD chỉ ở test
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std:  [0.229, 0.224, 0.225]
+  augment: [RandomResizedCrop, RandomHorizontalFlip, RandomAdjustSharpness, RandomAutocontrast]
+
+id_training:
+  pretrained: true           # ĐÃ CHỐT: pretrained ImageNet (bỏ tuyên bố "from scratch")
+  epochs: 100
+  optimizer: adam
+  lr: 1.0e-3
+  scheduler: cosine
+  losses: [ce, isomax_plus]  # CE (=SoftMax baseline) và IsoMax+
+  backbones:                 # batch chỉnh cho L4 24GB (bf16)
+    resnet50:        {batch: 64}
+    efficientnet_b1: {batch: 64}
+    mobilenet_v3_large: {batch: 128}
+    convnext_base:   {batch: 32, gradient_checkpointing: true}
+  ckpt_every: 1              # lưu mỗi epoch (Colab dễ ngắt)
+
+isomax:                      # IsoMax+ (Macêdo & Ludermir 2021) — PRIOR WORK, cite.
+  entropic_scale: 10.0
+  distance_scale_init: 1.0
+  temperature: 1.0
+
+sd_lora:                     # Pha 2a — LoRA fine-tune SD trên ảnh gỗ (KHÔNG full FT)
+  base_model: runwayml/stable-diffusion-v1-5
+  resolution: 512
+  rank: 16
+  alpha: 16
+  lr: 1.0e-4
+  train_steps: 2500
+  batch: 1
+  grad_accum: 4
+  mixed_precision: fp16
+  gradient_checkpointing: true
+  use_8bit_adam: true
+  caption_from: prompts.yaml   # caption dựng từ taxonomy × mô tả
+
+latent_space:                # Pha 2b — DREAM-OOD Bước 1 (học không gian có điều kiện text). Cite DREAM-OOD.
+  encoder: resnet34
+  feature_dim: 768           # khớp chiều text-encoder CLIP
+  epochs: 100
+  temperature: 0.1
+  clip_text_model: ViT-L/14  # để dựng token_embed_wood.npy từ tên loài
+  save_id_feat: true
+
+sampling:                    # Pha 2c — lấy mẫu outlier embedding (kNN, kiểu NPOS). Cite NPOS.
+  K_in_knn: 300
+  ood_det_select: 200
+  gaussian_mag: 0.03
+  n_negative_samples: 1500
+  taxonomy_guided: true      # ĐÓNG GÓP MỚI: near=nội suy trong cùng chi/họ; far=xa mọi cụm họ
+  near_frac: 0.5             # tỉ lệ outlier "near" khi lấy mẫu
+
+synth:                       # Pha 2d/2e — sinh & đánh giá ảnh OOD
+  n_outlier_per_id_class: 200   # ~8000 ảnh cho 40 lớp ID; ~6000 cho 30 lớp
+  n_inlier_per_id_class: 0      # bật nếu làm thí nghiệm generalization
+  near_far_ratio: 0.5
+  gen_steps: 50
+  guidance_scale: 7.5
+  gen_batch: 4
+  gen_resolution: 512
+  resize_to: 224
+  fid: true
+  diversity_lpips: true
+
+eool:                        # Pha 3 — EOIL = IsoMax+ + β·L_ood(energy) với outlier sinh
+  score: energy
+  energy_weight_beta: 1.0    # QUÉT trong ablation
+  beta_sweep: [0.5, 1.0, 5.0, 19.2]
+  T: 1.0
+  m_in: -25.0
+  m_out: -7.0
+  mlp_phi_layers: 3          # φ trong công thức (3)
+
+baselines:                   # Pha 4 — qua OpenOOD (bao gồm ODIN để claim có căn cứ)
+  framework: openood
+  methods: [msp, odin, energy, mahalanobis, react, knn, maxlogit, vim, gen, she, isomax_plus]
+  odin: {temperature: 1000, epsilon: 0.0014}
+
+eval:                        # Pha 5 — metric & thống kê
+  tpr: 0.95
+  metrics: [fpr_at_95tpr, auroc, aupr_in, aupr_out]  # (TNR@95TPR = 1 - FPR@95TPR)
+  significance_test: bootstrap   # cho các cặp sát nhau
+
+figures:                     # Pha "fig" — style cố định, chỉ đọc từ results/
+  formats: [pdf, png]
+  dpi: 300
+  cmap: colorblind

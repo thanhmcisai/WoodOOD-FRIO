@@ -1,0 +1,56 @@
+# prompts.yaml — Prompt bank cho Stable Diffusion.
+# src/generate.py MỞ RỘNG prompt = tích của: {scientific_name từ taxonomy.csv} x {photographic} x {surface/condition}.
+# Mục tiêu: ĐA DẠNG và bám danh pháp nhị thức. Xem CLAUDE.md mục 6 về HAI vai trò (caption LoRA vs ngữ cảnh outlier).
+
+# Khung câu cơ sở. {sci}=tên khoa học, {genus}=chi, {photo}, {surface}, {condition} được thay khi mở rộng.
+base_templates:
+  - "macroscopic cross-section of {sci} wood, {surface}, {photo}, {condition}"
+  - "close-up wood anatomy of {sci}, transverse section, {photo}, {surface}, {condition}"
+  - "{genus} wood grain macro photograph, cross-sectional surface, {photo}, {condition}"
+  - "high-detail macro of {sci} timber cross-section showing vessels and parenchyma, {photo}"
+
+# Mô tả chụp (khớp thiết bị Dino-Lite 50x của dataset)
+photographic:
+  - "50x magnification, sharp focus, high resolution"
+  - "digital microscope 50x, natural lighting"
+  - "digital microscope 50x, flash lighting"
+  - "macro lens, even illumination, 1280x1024"
+
+# Mô tả bề mặt (khớp quy trình mài/đánh bóng 600-grit)
+surface:
+  - "freshly sanded 600-grit polished surface"
+  - "smooth planed surface"
+  - "raw unpolished cut surface"
+
+# Điều kiện. "normal" cho caption LoRA & inlier; nhóm stressor dùng để tăng ĐA DẠNG và
+# tạo near-OOD hiện thực (thời tiết/mối mọt) — bài gốc có nhắc "environmental stressors".
+condition:
+  normal:
+    - "clean, well-preserved"
+    - "dry wood, natural color"
+  stressor:                 # cho đa dạng / near-OOD realism
+    - "weathered and faded surface"
+    - "insect damage and small boreholes"
+    - "fungal staining and discoloration"
+    - "cracked and checked from drying"
+    - "moisture-darkened patches"
+
+# Gợi ý theo chi (tuỳ chọn, để tăng độ đặc thù giải phẫu). src/generate.py chèn nếu genus khớp.
+genus_hints:
+  Afzelia:   "diffuse-porous, paratracheal parenchyma bands"
+  Dalbergia: "fine pores, dark heartwood, banded parenchyma"
+  Fokienia:  "softwood tracheids, resin canals absent"
+  Juglans:   "semi-ring-porous, wavy grain"
+
+# Negative prompt chung (giảm artifact khi sinh)
+negative_prompt: "blurry, low quality, cartoon, drawing, text, watermark, distorted, cgi render"
+
+# Số biến thể prompt sinh cho mỗi lớp khi generation (kết hợp với n_outlier_per_id_class ở config).
+# Đặt >= để đủ đa dạng; src/generate.py lấy mẫu tổ hợp không lặp.
+expansion:
+  min_variations_per_class: 24
+  shuffle_seed: 0
+  # caption LoRA: chỉ dùng condition.normal (mô tả ảnh thật).
+  # generation outlier: được phép dùng cả stressor để đa dạng; nhưng OOD là do EMBEDDING, không phải prompt.
+  lora_use_conditions: [normal]
+  gen_use_conditions: [normal, stressor]

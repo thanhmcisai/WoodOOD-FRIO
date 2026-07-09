@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data / artifacts (released separately or too large for git)
+data/
+datasets/
+VN50/
+checkpoints/
+*.pt
+*.ckpt
+*.safetensors
+synth/
+results/
+figures/
+tables/
+logs/
+*.npy
